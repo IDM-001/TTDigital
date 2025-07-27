@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- sudah sama bahasa indonesi inggris dan china, ukuran pas -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -32,7 +33,19 @@
     }
   </style>
 </head>
-<body class="bg-gray-100 font-sans">
+$1
+  <div class="flex justify-end p-4">
+    <label class="flex items-center space-x-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-600" viewBox="0 0 20 20" fill="currentColor">
+        <path d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.75-11a.75.75 0 011.5 0v2.25H13a.75.75 0 010 1.5h-2.25V13a.75.75 0 01-1.5 0v-2.25H7a.75.75 0 010-1.5h2.25V7z" />
+      </svg>
+      <select id="languageSwitcher" class="border border-gray-300 rounded px-2 py-1">
+        <option value="id">Indonesia</option>
+        <option value="en">English</option>
+        <option value="zh">中文</option>
+      </select>
+    </label>
+  </div>
 <div class="max-w-6xl mx-auto p-6">
   <h1 class="text-3xl font-bold text-center mb-6">Tanda Tangan Digital PDF</h1>
 
@@ -174,6 +187,14 @@ function goToPage() {
   if (num >= 1 && num <= totalPages) {
     currentPage = num;
     renderPage(currentPage);
+  } else {
+    const lang = document.getElementById('languageSwitcher').value;
+    const msg = {
+      id: 'Halaman tidak tersedia, silakan cek lagi.',
+      en: 'Page not available, please check again.',
+      zh: '页面不存在，请检查。'
+    };
+    alert(msg[lang] || msg['id']);
   }
 }
 
@@ -234,8 +255,8 @@ async function downloadSignedPDF() {
         const pdfCanvas = wrapper.parentElement.querySelector('canvas');
 const ratioX = wrapper.offsetLeft / pdfCanvas.offsetWidth;
 const ratioY = wrapper.offsetTop / pdfCanvas.offsetHeight;
-const x = ratioX * 595.28 + 10;
-const y = ratioY * (canvas.height * scaleRatio);
+const x = ratioX * 595.28 + 5;
+const y = ratioY * (canvas.height * scaleRatio) + 10;
         const w = wrapper.offsetWidth * scaleRatio;
         const h = wrapper.offsetHeight * scaleRatio;
         const img = wrapper.querySelector('img');
@@ -266,6 +287,66 @@ document.getElementById('pdfInput').addEventListener('change', async function (e
   document.getElementById('pageNumber').value = 1;
   renderPage(currentPage);
 });
+</script>
+<script>
+  const translations = {
+    en: {
+      '1. Buat Tanda Tangan': '1. Create Signature',
+      'Tanda Tangan Digital PDF': 'Digital PDF Signature',
+      'Tanda Tangan Anda': 'Your Signature',
+      'Buat tanda tangan di area di atas': 'Draw your signature above',
+      'Preview:': 'Preview:',
+      'Hapus': 'Clear',
+      'Simpan': 'Save',
+      '2. Unggah PDF dan Navigasi Halaman': '2. Upload PDF and Navigate Pages',
+      'Go': 'Go',
+      '←': '←',
+      '→': '→',
+      '3. Simpan & Unduh': '3. Save & Download',
+      'Unduh PDF Bertanda Tangan': 'Download Signed PDF',
+      'Tempel Tanda Tangan': 'Insert Signature',
+      'Tanda tangan kosong': 'Signature is empty',
+      'Tanda tangan berhasil disimpan.': 'Signature saved successfully.',
+      'Halaman': 'Page'
+    },
+    zh: {
+      '1. Buat Tanda Tangan': '1. 创建签名',
+      'Tanda Tangan Digital PDF': 'PDF 数字签名',
+      'Tanda Tangan Anda': '您的签名',
+      'Buat tanda tangan di area di atas': '在上方区域绘制签名',
+      'Preview:': '预览：',
+      'Hapus': '清除',
+      'Simpan': '保存',
+      '2. Unggah PDF dan Navigasi Halaman': '2. 上传 PDF 并浏览页面',
+      'Go': '跳转',
+      '←': '←',
+      '→': '→',
+      '3. Simpan & Unduh': '3. 保存并下载',
+      'Unduh PDF Bertanda Tangan': '下载已签名 PDF',
+      'Tempel Tanda Tangan': '粘贴签名',
+      'Tanda tangan kosong': '签名为空',
+      'Tanda tangan berhasil disimpan.': '签名已保存。',
+      'Halaman': '第 页'
+    }
+  };
+
+  const switchLang = lang => {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      if (translations[lang][key]) el.textContent = translations[lang][key];
+    });
+    document.querySelectorAll('button, h1, h2, label, span').forEach(el => {
+      const t = el.textContent.trim();
+      if (translations[lang][t]) el.textContent = translations[lang][t];
+    });
+  };
+
+  document.getElementById('languageSwitcher').addEventListener('change', e => {
+    switchLang(e.target.value);
+  });
+
+  // Default to Indonesian
+  switchLang('id');
 </script>
 </body>
 </html>
