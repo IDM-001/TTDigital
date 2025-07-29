@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tanda Tangan Digital</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background-color: black;
+      color: white;
+    }
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 1rem;
+      position: relative;
+    }
+    section {
+      border: 4px solid;
+      border-radius: 1rem;
+      padding: 2rem;
+      margin: 2rem 0;
+      box-shadow: 0 0 20px;
+    }
+    .neon-green {
+      border-color: #39FF14;
+      box-shadow: 0 0 20px #39FF14;
+    }
+    .neon-blue {
+      border-color: #00FFFF;
+      box-shadow: 0 0 20px #00FFFF;
+    }
+    h1 {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+    h2 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+    p {
+      font-size: 1.25rem;
+      color: #ccc;
+      max-width: 600px;
+      margin: 0 auto 2rem;
+    }
+    button {
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      background-color: #00ffff;
+      color: black;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      margin: 0.5rem;
+    }
+    canvas {
+      background-color: white;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: 1rem;
+      align-items: center;
+    }
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: #888;
+    }
+    input[type="file"], input[type="number"] {
+      display: block;
+      margin: 1rem 0;
+    }
+    #pdf-preview {
+      display: block;
+      margin: 2rem auto;
+      border: 1px solid #ccc;
+      background: white;
+      width: 100%;
+      max-height: 600px;
+    }
+    #signature-draggable {
+      position: absolute;
+      z-index: 10;
+      cursor: move;
+      border: 2px dashed #00ffff;
+      border-radius: 4px;
+      max-width: 150px;
+    }
+    .resizer {
+      width: 10px;
+      height: 10px;
+      background: #00ffff;
+      position: absolute;
+      right: -5px;
+      bottom: -5px;
+      cursor: se-resize;
+    }
+    .color-picker {
+      margin-top: 1rem;
+    }
+    .color-picker label {
+      margin-right: 1rem;
+    }
+    #page-info {
+      font-size: 1rem;
+      margin-top: 0.5rem;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+</head>
+<body>
+  <main class="container">
+    <section class="hero neon-green">
+      <h1>Tanda Tangan Digital</h1>
+      <p>Tempelkan tanda tangan digital Anda secara mudah dan cepat ke dalam file PDF.</p>
+      <button onclick="document.getElementById('upload-section').scrollIntoView()">Mulai Sekarang</button>
+    </section>
+
+    <section id="upload-section" class="upload neon-blue">
+      <h2>Upload Dokumen</h2>
+      <input type="file" id="pdf-upload" accept="application/pdf" onchange="previewPDF()" />
+       <div class="button-row">
+        <button onclick="prevPage()">⬅ Halaman Sebelumnya</button>
+        <input type="number" id="goto-page" placeholder="Ke halaman..." min="1" style="width: 100px" />
+        <button onclick="goToPage()">Pergi</button>
+        <button onclick="nextPage()">Halaman Berikutnya ➡</button>
+        <span id="page-info">Halaman 0 dari 0</span>
+      </div>
+      <canvas id="pdf-preview"></canvas>
+      <div id="signature-wrapper" style="position:absolute; display:none;">
+        <img id="signature-draggable" src="" draggable="true" />
+        <div class="resizer"></div>
+      </div>
+      <button onclick="saveSignaturePosition()">Simpan Posisi</button>
+      <button onclick="downloadSignedPDF()">Download PDF Bertanda Tangan</button>
+    </section>
+
+    <section class="draw neon-green">
+      <h2>Buat Tanda Tangan Online</h2>
+      <canvas id="signature-pad" width="400" height="200"></canvas>
+      <div class="color-picker">
+        <label><input type="radio" name="color" value="black" checked> Hitam</label>
+        <label><input type="radio" name="color" value="blue"> Biru</label>
+        <label><input type="radio" name="color" value="red"> Merah</label>
+      </div>
+      <div class="button-row">
+        <button onclick="savePadSignature()">Simpan</button>
+        <button onclick="clearPad()">Hapus</button>
+      </div>
+    </section>
+
+    <footer>
+      &copy; 2025 Tanda Tangan Digital. All rights reserved.
+    </footer>
+  </main>
+
+  <script>
+    let signaturePad;
+    let savedSignatureDataURL = null;
+    let pdfDoc = null;
+    let currentPage = 1;
+    let scale = 1.5;
+    let signaturePos = { x: 50, y: 50, width: 150, height: 50 };
+
+    function updatePageInfo() {
+      const pageInfo = document.getElementById("page-info");
+      pageInfo.textContent = `Halaman ${currentPage} dari ${pdfDoc.numPages}`;
+    }
+
+    window.onload = () => {
+      const canvas = document.getElementById("signature-pad");
+      signaturePad = new SignaturePad(canvas, { penColor: "black" });
+
+      document.querySelectorAll('input[name="color"]').forEach(radio => {
+        radio.addEventListener("change", e => {
+          signaturePad.penColor = e.target.value;
+        });
+      });
+
+      const wrapper = document.getElementById("signature-wrapper");
+      const sigImg = document.getElementById("signature-draggable");
+      const resizer = document.querySelector(".resizer");
+
+      sigImg.addEventListener("dragstart", e => e.preventDefault());
+
+      let isDragging = false;
+      let isResizing = false;
+
+      wrapper.addEventListener("mousedown", (e) => {
+        if (e.target === resizer) {
+          isResizing = true;
+        } else {
+          isDragging = true;
+        }
+      });
+
+      document.addEventListener("mouseup", () => {
+        isDragging = false;
+        isResizing = false;
+      });
+
+      document.addEventListener("mousemove", (e) => {
+        if (isDragging) {
+          signaturePos.x = e.pageX - wrapper.offsetWidth / 2;
+          signaturePos.y = e.pageY - wrapper.offsetHeight / 2;
+          wrapper.style.left = signaturePos.x + "px";
+          wrapper.style.top = signaturePos.y + "px";
+        }
+        if (isResizing) {
+          const newWidth = e.pageX - wrapper.offsetLeft;
+          const newHeight = e.pageY - wrapper.offsetTop;
+          wrapper.style.width = newWidth + "px";
+          wrapper.style.height = newHeight + "px";
+          sigImg.style.width = "100%";
+          sigImg.style.height = "100%";
+          signaturePos.width = newWidth;
+          signaturePos.height = newHeight;
+        }
+      });
+    };
+
+    function clearPad() {
+      signaturePad.clear();
+    }
+
+    function savePadSignature() {
+      if (signaturePad.isEmpty()) return alert("Silakan gambar tanda tangan terlebih dahulu.");
+      savedSignatureDataURL = signaturePad.toDataURL("image/png");
+      const sigImg = document.getElementById("signature-draggable");
+      sigImg.src = savedSignatureDataURL;
+      document.getElementById("signature-wrapper").style.display = "block";
+    }
+
+    function previewPDF() {
+      const file = document.getElementById("pdf-upload").files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function () {
+        const typedarray = new Uint8Array(this.result);
+        pdfjsLib.getDocument(typedarray).promise.then(function (pdf) {
+          pdfDoc = pdf;
+          currentPage = 1;
+          renderPage(currentPage);
+        });
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function renderPage(num) {
+      pdfDoc.getPage(num).then(function (page) {
+        const canvas = document.getElementById("pdf-preview");
+        const context = canvas.getContext("2d");
+        const viewport = page.getViewport({ scale: scale });
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        const renderContext = { canvasContext: context, viewport: viewport };
+        page.render(renderContext);
+        updatePageInfo();
+      });
+    }
+
+    function prevPage() {
+      if (currentPage <= 1) return;
+      currentPage--;
+      renderPage(currentPage);
+    }
+
+    function nextPage() {
+      if (currentPage >= pdfDoc.numPages) return;
+      currentPage++;
+      renderPage(currentPage);
+    }
+
+    function goToPage() {
+      const page = parseInt(document.getElementById("goto-page").value);
+      if (page >= 1 && page <= pdfDoc.numPages) {
+        currentPage = page;
+        renderPage(currentPage);
+      }
+    }
+
+    function loadSignatureImage(event) {
+      const wrapper = document.getElementById("signature-wrapper");
+      const img = document.getElementById("signature-draggable");
+      img.src = URL.createObjectURL(event.target.files[0]);
+      wrapper.style.display = "block";
+    }
+
+    function saveSignaturePosition() {
+      alert("Posisi dan ukuran tanda tangan berhasil disimpan. Silakan klik download untuk menyimpan PDF.");
+    }
+
+    async function downloadSignedPDF() {
+      const pdfFile = document.getElementById("pdf-upload").files[0];
+      if (!pdfFile) return alert("Silakan unggah file PDF terlebih dahulu.");
+
+      const reader = new FileReader();
+      reader.onload = async function () {
+        const existingPdfBytes = new Uint8Array(this.result);
+        const pdfDocLib = await PDFLib.PDFDocument.load(existingPdfBytes);
+
+        const img = document.getElementById("signature-draggable");
+        const wrapper = document.getElementById("signature-wrapper");
+        const canvasRect = document.getElementById("pdf-preview").getBoundingClientRect();
+        const wrapperRect = wrapper.getBoundingClientRect();
+
+        let signatureImage;
+        if (img.src.startsWith("data:image")) {
+          signatureImage = await pdfDocLib.embedPng(img.src);
+        } else {
+          const res = await fetch(img.src);
+          const buffer = await res.arrayBuffer();
+          signatureImage = await pdfDocLib.embedPng(buffer);
+        }
+
+        const pages = pdfDocLib.getPages();
+        const targetPage = pages[currentPage - 1];
+        const { width, height } = targetPage.getSize();
+
+        const scaleX = width / canvasRect.width;
+        const scaleY = height / canvasRect.height;
+
+        const x = (wrapperRect.left - canvasRect.left) * scaleX;
+        const y = height - ((wrapperRect.top - canvasRect.top) + wrapper.offsetHeight) * scaleY;
+
+        targetPage.drawImage(signatureImage, {
+          x: x,
+          y: y,
+          width: wrapper.offsetWidth * scaleX,
+          height: wrapper.offsetHeight * scaleY,
+        });
+
+        const pdfBytes = await pdfDocLib.save();
+        const blob = new Blob([pdfBytes], { type: "application/pdf" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "tanda-tangan.pdf";
+        link.click();
+      };
+      reader.readAsArrayBuffer(pdfFile);
+    }
+  </script>
+</body>
+</html>
