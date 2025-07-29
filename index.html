@@ -1,356 +1,364 @@
 <!DOCTYPE html>
-<!-- sudah sama bahasa indonesi inggris dan china, ukuran pas -->
-<html lang="en">
+<html lang="id">
 <head>
-  <meta name="theme-color" content="#0f172a" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tanda Tangan Digital - Navigasi Halaman</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.12.313/pdf.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <title>Tanda Tangan Digital</title>
   <style>
-    body { font-family: 'Inter', sans-serif; }
-    canvas.signature-canvas {
-      border: 2px dashed #d1d5db;
-      background: #fff;
-      width: 100%;
-      height: 300px;
-      cursor: crosshair;
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background-color: black;
+      color: white;
     }
-    .signature-img {
-      max-width: 100%;
-      max-height: 100%;
-      cursor: move;
-    }
-    .pdf-page-wrapper {
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 1rem;
       position: relative;
-      margin-bottom: 20px;
     }
-    .resizable-wrapper {
+    section {
+      border: 4px solid;
+      border-radius: 1rem;
+      padding: 2rem;
+      margin: 2rem 0;
+      box-shadow: 0 0 20px;
+    }
+    .neon-green {
+      border-color: #39FF14;
+      box-shadow: 0 0 20px #39FF14;
+    }
+    .neon-blue {
+      border-color: #00FFFF;
+      box-shadow: 0 0 20px #00FFFF;
+    }
+    h1 {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+    h2 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+    p {
+      font-size: 1.25rem;
+      color: #ccc;
+      max-width: 600px;
+      margin: 0 auto 2rem;
+    }
+    button {
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      background-color: #00ffff;
+      color: black;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      margin: 0.5rem;
+    }
+    canvas {
+      background-color: white;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: 1rem;
+      align-items: center;
+    }
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: #888;
+    }
+    input[type="file"], input[type="number"] {
+      display: block;
+      margin: 1rem 0;
+    }
+    #pdf-preview-wrapper {
+      position: relative;
+    }
+    #pdf-preview {
+      display: block;
+      margin: 2rem auto;
+      border: 1px solid #ccc;
+      background: white;
+      width: 100%;
+      max-height: 600px;
+    }
+    #signature-wrapper {
       position: absolute;
-      border: 1px dashed #999;
-      background: transparent;
+      z-index: 10;
+      cursor: move;
+      border: 2px dashed #00ffff;
+      border-radius: 4px;
+      max-width: 150px;
+    }
+    #signature-draggable {
+      display: block;
+      max-width: 100%;
+      height: auto;
+    }
+    .resizer {
+      width: 10px;
+      height: 10px;
+      background: #00ffff;
+      position: absolute;
+      right: -5px;
+      bottom: -5px;
+      cursor: se-resize;
+    }
+    .color-picker {
+      margin-top: 1rem;
+    }
+    .color-picker label {
+      margin-right: 1rem;
+    }
+    #page-info {
+      font-size: 1rem;
+      margin-top: 0.5rem;
     }
   </style>
 </head>
-$1
-  <div class="flex justify-end p-4">
-  <div class="flex items-center space-x-3">
-    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6h4" />
-    </svg>
-    <label class="text-base font-medium text-gray-700">Language:</label>
-    <select id="languageSwitcher" class="border border-gray-300 rounded px-3 py-2 text-base font-semibold">
-      <option value="id">🇮🇩 Indonesia</option>
-      <option value="en">🇺🇸 English</option>
-      <option value="zh">🇨🇳 中文</option>
-    </select>
-  </div>
-</div>
-<div class="max-w-6xl mx-auto p-4 sm:p-6 md:p-8 lg:p-10 w-full bg-gradient-to-b from-white to-blue-50 rounded-lg shadow-xl">
-  <h1 class="text-3xl font-extrabold text-center mb-6 text-blue-900 tracking-tight">Tanda Tangan Digital PDF</h1>
+<body>
+  <main class="container">
+    <h1 class="neon-green">Tanda Tangan Digital</h1>
 
-  <!-- Signature Section -->
-  <section class="mb-12 bg-white p-6 rounded-lg shadow border border-blue-400 transition duration-500 hover:shadow-lg hover:border-blue-500">
-    <h2 class="text-xl font-semibold mb-2">1. Buat Tanda Tangan</h2>
-    <canvas id="signatureCanvas" class="signature-canvas w-full h-[300px] sm:h-[300px] md:h-[350px]"></canvas>
-    <div class="mt-4 flex flex-col sm:flex-row gap-2 justify-start">
-      <button onclick="clearSignature()" class="bg-gray-200 text-black px-4 py-2 rounded hover:opacity-90 transition">Hapus</button>
-      <button onclick="previewSignature()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition">Preview</button>
-      <button onclick="saveSignature()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition">Simpan</button>
-    </div>
-    <div id="signaturePreview" class="mt-4 w-full overflow-auto"></div>
-  </section>
+    <section class="neon-blue">
+      <h2>Unggah Dokumen PDF</h2>
+      <input type="file" id="pdf-upload" accept="application/pdf" />
+      <div id="page-info">Halaman <span id="current-page">1</span> dari <span id="total-pages">1</span></div>
+      <div class="button-row">
+        <button onclick="prevPage()">◀ Sebelumnya</button>
+        <input type="number" id="goto-page" min="1" value="1" style="width: 60px" onchange="goToPage(this.value)" />
+        <button onclick="nextPage()">Berikutnya ▶</button>
+      </div>
+      <div id="pdf-preview-wrapper">
+        <canvas id="pdf-preview"></canvas>
+        <div id="signature-wrapper" style="display:none;">
+          <img id="signature-draggable" />
+          <div class="resizer"></div>
+        </div>
+      </div>
+    </section>
 
-  <!-- Upload PDF -->
-  <section class="mb-12 bg-white p-6 rounded-lg shadow border border-blue-200 transition duration-500 hover:shadow-lg hover:border-blue-400">
-    <h2 class="text-xl font-semibold mb-2">2. Unggah PDF dan Navigasi Halaman</h2>
-    <input type="file" id="pdfInput" accept="application/pdf" class="mb-4" />
-    <div class="flex flex-wrap items-center gap-2 sm:gap-4 mb-4">
-      <button onclick="prevPage()" class="bg-gray-300 px-3 py-1 rounded">←</button>
-      <input type="number" id="pageNumber" min="1" class="border rounded px-2 py-1 w-20" />
-      <button onclick="goToPage()" class="bg-blue-500 text-white px-3 py-1 rounded">Go</button>
-      <button onclick="nextPage()" class="bg-gray-300 px-3 py-1 rounded">→</button>
-      <span id="pageInfo" class="ml-2 text-sm text-gray-700"></span>
-    </div>
-    <div id="pdfContainer"></div>
-  </section>
+    <section class="neon-blue">
+      <h2>Buat Tanda Tangan</h2>
+      <canvas id="signature-pad" width="400" height="150" style="border:1px solid #ccc;"></canvas>
+      <div class="color-picker">
+        <label><input type="radio" name="penColor" value="black" checked> Hitam</label>
+        <label><input type="radio" name="penColor" value="blue"> Biru</label>
+        <label><input type="radio" name="penColor" value="red"> Merah</label>
+      </div>
+      <div class="button-row">
+        <button onclick="clearSignature()">Hapus</button>
+        <button onclick="saveSignature()">Simpan Tanda Tangan</button>
+      </div>
+    </section>
 
-  <!-- Download PDF -->
-  <section class="mb-12 bg-white p-6 rounded-lg shadow border border-blue-400 transition duration-500 hover:shadow-lg hover:border-blue-500">
-    <h2 class="text-xl font-semibold mb-2">3. Simpan & Unduh</h2>
-    <button onclick="downloadSignedPDF()" class="bg-indigo-600 text-white px-6 py-2 rounded">Unduh PDF Bertanda Tangan</button>
-  </section>
-</div>
+    <section class="neon-blue">
+      <h2>Atur Posisi Tanda Tangan</h2>
+      <p>Geser tanda tangan ke posisi yang diinginkan di halaman PDF.</p>
+      <div class="button-row">
+        <button onclick="lockSignaturePosition()">Simpan Posisi</button>
+        <button onclick="downloadSignedPDF()">Download PDF Bertanda Tangan</button>
+      </div>
+    </section>
+  </main>
 
-<script>
-let canvas = new fabric.Canvas('signatureCanvas', { isDrawingMode: true });
-canvas.freeDrawingBrush.color = '#000';
-canvas.freeDrawingBrush.width = 2;
-let savedSignature = null;
+  <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+  <script>
+    const pdfjsLib = window['pdfjs-dist/build/pdf'];
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js';
 
-function clearSignature() {
-  canvas.clear();
-}
+    let pdfDoc = null;
+    let currentPage = 1;
+    let totalPages = 1;
+    let signaturePad;
+    let savedSignatureDataURL = "";
 
-function previewSignature() {
-  const dataUrl = canvas.toDataURL();
-  const img = document.createElement('img');
-  img.src = dataUrl;
-  img.className = 'border shadow w-64';
-  const preview = document.getElementById('signaturePreview');
-  preview.innerHTML = '<p class="mb-2">Preview:</p>';
-  preview.appendChild(img);
-}
-
-function saveSignature() {
-  if (canvas.isEmpty()) return alert('Tanda tangan kosong');
-  savedSignature = canvas.toDataURL();
-  alert('Tanda tangan berhasil disimpan.');
-}
-
-let pdfDoc = null;
-let currentPage = 1;
-let totalPages = 0;
-let signatures = {};
-
-function renderPage(num) {
-  pdfDoc.getPage(num).then(page => {
-    const scale = 1.5;
-    const viewport = page.getViewport({ scale });
-    const canvasEl = document.createElement('canvas');
-    const context = canvasEl.getContext('2d');
-    canvasEl.height = viewport.height;
-    canvasEl.width = viewport.width;
-
-    page.render({ canvasContext: context, viewport }).promise.then(() => {
-      const container = document.getElementById('pdfContainer');
-      container.innerHTML = '';
-      const wrapper = document.createElement('div');
-      wrapper.className = 'pdf-page-wrapper';
-      wrapper.appendChild(canvasEl);
-
-      const signBtn = document.createElement('button');
-      signBtn.textContent = 'Tempel Tanda Tangan';
-      signBtn.className = 'mt-2 bg-blue-500 text-white px-4 py-1 rounded';
-      signBtn.onclick = () => {
-        if (!savedSignature) return alert('Simpan tanda tangan terlebih dahulu.');
-
-        const containerSig = document.createElement('div');
-        containerSig.style.position = 'absolute';
-        containerSig.style.left = '50px';
-        containerSig.style.top = '50px';
-        containerSig.style.width = '150px';
-        containerSig.className = 'resizable-wrapper';
-
-        const img = document.createElement('img');
-        img.src = savedSignature;
-        img.className = 'signature-img';
-        img.setAttribute('draggable', false);
-
-        // Tambahkan tombol + dan - di ujung kiri dan kanan
-        const minusBtn = document.createElement('button');
-        minusBtn.textContent = '-';
-        minusBtn.className = 'text-white bg-red-500 px-2 py-1 rounded-full text-xs absolute -top-4 -left-4';
-        minusBtn.onclick = function () {
-          const curr = parseInt(containerSig.style.width);
-          if (curr > 30) containerSig.style.width = (curr - 10) + 'px';
+    document.getElementById('pdf-upload').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file && file.type === 'application/pdf') {
+        const fileReader = new FileReader();
+        fileReader.onload = function () {
+          const typedArray = new Uint8Array(this.result);
+          pdfjsLib.getDocument(typedArray).promise.then(pdf => {
+            pdfDoc = pdf;
+            totalPages = pdfDoc.numPages;
+            document.getElementById('total-pages').textContent = totalPages;
+            renderPage(currentPage);
+          });
         };
-
-        const plusBtn = document.createElement('button');
-        plusBtn.textContent = '+';
-        plusBtn.className = 'text-white bg-green-500 px-2 py-1 rounded-full text-xs absolute -top-4 -right-4';
-        plusBtn.onclick = function () {
-          const curr = parseInt(containerSig.style.width);
-          if (curr < 600) containerSig.style.width = (curr + 10) + 'px';
-        };
-
-        containerSig.appendChild(minusBtn);
-        containerSig.appendChild(plusBtn);
-        containerSig.appendChild(img);
-        makeDraggable(containerSig);
-        wrapper.appendChild(containerSig);
-
-        if (!signatures[num]) signatures[num] = [];
-        signatures[num].push(containerSig);
-      };
-
-      wrapper.appendChild(signBtn);
-      container.appendChild(wrapper);
-
-      document.getElementById('pageInfo').textContent = `Halaman ${currentPage} / ${totalPages}`;
+        fileReader.readAsArrayBuffer(file);
+      }
     });
-  });
-}
 
-function goToPage() {
-  const num = parseInt(document.getElementById('pageNumber').value);
-  if (num >= 1 && num <= totalPages) {
-    currentPage = num;
-    renderPage(currentPage);
-  } else {
-    const lang = document.getElementById('languageSwitcher').value;
-    const msg = {
-      id: 'Halaman tidak tersedia, silakan cek lagi.',
-      en: 'Page not available, please check again.',
-      zh: '页面不存在，请检查。'
-    };
-    alert(msg[lang] || msg['id']);
-  }
-}
+    function renderPage(pageNum) {
+      pdfDoc.getPage(pageNum).then(page => {
+        const canvas = document.getElementById('pdf-preview');
+        const context = canvas.getContext('2d');
+        const viewport = page.getViewport({ scale: 1.5 });
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
 
-function nextPage() {
-  if (currentPage < totalPages) {
-    currentPage++;
-    renderPage(currentPage);
-  }
-}
+        const renderContext = {
+          canvasContext: context,
+          viewport: viewport
+        };
+        page.render(renderContext);
 
-function prevPage() {
-  if (currentPage > 1) {
-    currentPage--;
-    renderPage(currentPage);
-  }
-}
+        document.getElementById('current-page').textContent = pageNum;
+        document.getElementById('goto-page').value = pageNum;
+      });
+    }
 
-function makeDraggable(elmnt) {
-  let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-  elmnt.ontouchstart = elmnt.onmousedown = function (e) {
-    e.preventDefault();
-    pos3 = e.clientX;
-    pos4 = e.clientY;
-    document.onmouseup = document.ontouchend = closeDragElement;
-    document.onmousemove = document.ontouchmove = elementDrag;
-  };
-  function elementDrag(e) {
-    e = e.touches ? e.touches[0] : e;
-    pos1 = pos3 - e.clientX;
-    pos2 = pos4 - e.clientY;
-    pos3 = e.clientX;
-    pos4 = e.clientY;
-    elmnt.style.top = elmnt.offsetTop - pos2 + 'px';
-    elmnt.style.left = elmnt.offsetLeft - pos1 + 'px';}
-  function closeDragElement() {
-    document.onmouseup = null;
-    document.onmousemove = null;
-  }
-}
-
-async function downloadSignedPDF() {
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
-  for (let i = 1; i <= totalPages; i++) {
-    const page = await pdfDoc.getPage(i);
-    const viewport = page.getViewport({ scale: 2 });
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext('2d');
-    canvas.height = viewport.height;
-    canvas.width = viewport.width;
-    await page.render({ canvasContext: context, viewport }).promise;
-
-    const scaleRatio = 595.28 / canvas.width;
-    pdf.addImage(canvas.toDataURL('image/jpeg'), 'JPEG', 0, 0, 595.28, canvas.height * scaleRatio);
-
-    if (signatures[i]) {
-      for (let wrapper of signatures[i]) {
-        const pdfCanvas = wrapper.parentElement.querySelector('canvas');
-const ratioX = wrapper.offsetLeft / pdfCanvas.offsetWidth;
-const ratioY = wrapper.offsetTop / pdfCanvas.offsetHeight;
-const x = ratioX * 595.28 + 5;
-const y = ratioY * (canvas.height * scaleRatio) + 10;
-        const w = wrapper.offsetWidth * scaleRatio;
-        const h = wrapper.offsetHeight * scaleRatio;
-        const img = wrapper.querySelector('img');
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = img.naturalWidth;
-        tempCanvas.height = img.naturalHeight;
-        const tempCtx = tempCanvas.getContext('2d');
-        tempCtx.drawImage(img, 0, 0);
-        pdf.addImage(tempCanvas.toDataURL('image/png'), 'PNG', x, y, w, h);
+    function nextPage() {
+      if (currentPage < totalPages) {
+        currentPage++;
+        renderPage(currentPage);
       }
     }
-    if (i < totalPages) pdf.addPage();
-  }
-  const input = document.getElementById('pdfInput');
-  const originalName = input.files[0]?.name || 'dokumen.pdf';
-  const filename = 'sign_' + originalName.replace(/\.pdf$/i, '') + '.pdf';
-  pdf.save(filename);
-}
 
-document.getElementById('pdfInput').addEventListener('change', async function (e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const arrayBuffer = await file.arrayBuffer();
-  const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-  pdfDoc = await loadingTask.promise;
-  totalPages = pdfDoc.numPages;
-  currentPage = 1;
-  document.getElementById('pageNumber').value = 1;
-  renderPage(currentPage);
-});
-</script>
-<script>
-  const translations = {
-    en: {
-      '1. Buat Tanda Tangan': '1. Create Signature',
-      'Tanda Tangan Digital PDF': 'Digital PDF Signature',
-      'Tanda Tangan Anda': 'Your Signature',
-      'Buat tanda tangan di area di atas': 'Draw your signature above',
-      'Preview:': 'Preview:',
-      'Hapus': 'Clear',
-      'Simpan': 'Save',
-      '2. Unggah PDF dan Navigasi Halaman': '2. Upload PDF and Navigate Pages',
-      'Go': 'Go',
-      '←': '←',
-      '→': '→',
-      '3. Simpan & Unduh': '3. Save & Download',
-      'Unduh PDF Bertanda Tangan': 'Download Signed PDF',
-      'Tempel Tanda Tangan': 'Insert Signature',
-      'Tanda tangan kosong': 'Signature is empty',
-      'Tanda tangan berhasil disimpan.': 'Signature saved successfully.',
-      'Halaman': 'Page'
-    },
-    zh: {
-      '1. Buat Tanda Tangan': '1. 创建签名',
-      'Tanda Tangan Digital PDF': 'PDF 数字签名',
-      'Tanda Tangan Anda': '您的签名',
-      'Buat tanda tangan di area di atas': '在上方区域绘制签名',
-      'Preview:': '预览：',
-      'Hapus': '清除',
-      'Simpan': '保存',
-      '2. Unggah PDF dan Navigasi Halaman': '2. 上传 PDF 并浏览页面',
-      'Go': '跳转',
-      '←': '←',
-      '→': '→',
-      '3. Simpan & Unduh': '3. 保存并下载',
-      'Unduh PDF Bertanda Tangan': '下载已签名 PDF',
-      'Tempel Tanda Tangan': '粘贴签名',
-      'Tanda tangan kosong': '签名为空',
-      'Tanda tangan berhasil disimpan.': '签名已保存。',
-      'Halaman': '第 页'
+    function prevPage() {
+      if (currentPage > 1) {
+        currentPage--;
+        renderPage(currentPage);
+      }
     }
-  };
 
-  const switchLang = lang => {
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-      const key = el.getAttribute('data-i18n');
-      if (translations[lang][key]) el.textContent = translations[lang][key];
+    function goToPage(num) {
+      const n = parseInt(num);
+      if (n >= 1 && n <= totalPages) {
+        currentPage = n;
+        renderPage(currentPage);
+      }
+    }
+
+    const canvas = document.getElementById("signature-pad");
+    signaturePad = new SignaturePad(canvas);
+
+    document.querySelectorAll('input[name="penColor"]').forEach(el => {
+      el.addEventListener('change', e => {
+        signaturePad.penColor = e.target.value;
+      });
     });
-    document.querySelectorAll('button, h1, h2, label, span').forEach(el => {
-      const t = el.textContent.trim();
-      if (translations[lang][t]) el.textContent = translations[lang][t];
-    });
-  };
 
-  document.getElementById('languageSwitcher').addEventListener('change', e => {
-    switchLang(e.target.value);
-  });
+    function clearSignature() {
+      signaturePad.clear();
+    }
 
-  // Default to Indonesian
-  switchLang('id');
-</script>
+    function saveSignature() {
+      if (!signaturePad.isEmpty()) {
+        savedSignatureDataURL = signaturePad.toDataURL();
+        const wrapper = document.getElementById("signature-wrapper");
+        const img = document.getElementById("signature-draggable");
+        wrapper.style.display = "block";
+        img.src = savedSignatureDataURL;
+        wrapper.style.left = "20px";
+        wrapper.style.top = "20px";
+        makeDraggable(wrapper);
+        makeResizable(wrapper, wrapper.querySelector('.resizer'));
+      }
+    }
+
+    function makeDraggable(elmnt) {
+      let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+      elmnt.onmousedown = dragMouseDown;
+
+      function dragMouseDown(e) {
+        e.preventDefault();
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        document.onmouseup = closeDragElement;
+        document.onmousemove = elementDrag;
+      }
+
+      function elementDrag(e) {
+        e.preventDefault();
+        pos1 = pos3 - e.clientX;
+        pos2 = pos4 - e.clientY;
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+        elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+      }
+
+      function closeDragElement() {
+        document.onmouseup = null;
+        document.onmousemove = null;
+      }
+    }
+
+    function makeResizable(elmnt, resizer) {
+      resizer.addEventListener("mousedown", initResize);
+      function initResize(e) {
+        e.preventDefault();
+        window.addEventListener("mousemove", Resize);
+        window.addEventListener("mouseup", stopResize);
+      }
+      function Resize(e) {
+        elmnt.style.width = (e.clientX - elmnt.offsetLeft) + "px";
+        elmnt.style.height = (e.clientY - elmnt.offsetTop) + "px";
+      }
+      function stopResize() {
+        window.removeEventListener("mousemove", Resize);
+        window.removeEventListener("mouseup", stopResize);
+      }
+    }
+
+    function lockSignaturePosition() {
+      const wrapper = document.getElementById("signature-wrapper");
+      if (wrapper) wrapper.style.pointerEvents = "none";
+    }
+
+    async function downloadSignedPDF() {
+      const pdfFile = document.getElementById("pdf-upload").files[0];
+      if (!pdfFile) return alert("Silakan unggah file PDF terlebih dahulu.");
+
+      const reader = new FileReader();
+      reader.onload = async function () {
+        const existingPdfBytes = new Uint8Array(this.result);
+        const pdfDocLib = await PDFLib.PDFDocument.load(existingPdfBytes);
+
+        const img = document.getElementById("signature-draggable");
+        const wrapper = document.getElementById("signature-wrapper");
+        const canvasRect = document.getElementById("pdf-preview").getBoundingClientRect();
+        const wrapperRect = wrapper.getBoundingClientRect();
+
+        const pngUrl = savedSignatureDataURL;
+        const signatureImage = await pdfDocLib.embedPng(pngUrl);
+
+        const pages = pdfDocLib.getPages();
+        const targetPage = pages[currentPage - 1];
+        const { width, height } = targetPage.getSize();
+
+        const scaleX = width / canvasRect.width;
+        const scaleY = height / canvasRect.height;
+
+        const x = (wrapperRect.left - canvasRect.left) * scaleX;
+        const y = height - ((wrapperRect.top - canvasRect.top) + wrapper.offsetHeight) * scaleY;
+
+        targetPage.drawImage(signatureImage, {
+          x: x,
+          y: y,
+          width: wrapper.offsetWidth * scaleX,
+          height: wrapper.offsetHeight * scaleY,
+        });
+
+        const pdfBytes = await pdfDocLib.save();
+        const blob = new Blob([pdfBytes], { type: "application/pdf" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "tanda-tangan.pdf";
+        link.click();
+      };
+      reader.readAsArrayBuffer(pdfFile);
+    }
+  </script>
 </body>
 </html>
