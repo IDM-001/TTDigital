@@ -77,6 +77,9 @@
       display: block;
       margin: 1rem 0;
     }
+    #pdf-preview-wrapper {
+      position: relative;
+    }
     #pdf-preview {
       display: block;
       margin: 2rem auto;
@@ -85,13 +88,18 @@
       width: 100%;
       max-height: 600px;
     }
-    #signature-draggable {
+    #signature-wrapper {
       position: absolute;
       z-index: 10;
       cursor: move;
       border: 2px dashed #00ffff;
       border-radius: 4px;
       max-width: 150px;
+    }
+    #signature-draggable {
+      display: block;
+      max-width: 100%;
+      height: auto;
     }
     .resizer {
       width: 10px;
@@ -113,190 +121,199 @@
       margin-top: 0.5rem;
     }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
-  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
 </head>
 <body>
   <main class="container">
-    <section class="hero neon-green">
-      <h1>Tanda Tangan Digital</h1>
-      <p>Tempelkan tanda tangan digital Anda secara mudah dan cepat ke dalam file PDF.</p>
-      <button onclick="document.getElementById('upload-section').scrollIntoView()">Mulai Sekarang</button>
+    <h1 class="neon-green">Tanda Tangan Digital</h1>
+
+    <section class="neon-blue">
+      <h2>Unggah Dokumen PDF</h2>
+      <input type="file" id="pdf-upload" accept="application/pdf" />
+      <div id="page-info">Halaman <span id="current-page">1</span> dari <span id="total-pages">1</span></div>
+      <div class="button-row">
+        <button onclick="prevPage()">◀ Sebelumnya</button>
+        <input type="number" id="goto-page" min="1" value="1" style="width: 60px" onchange="goToPage(this.value)" />
+        <button onclick="nextPage()">Berikutnya ▶</button>
+      </div>
+      <div id="pdf-preview-wrapper">
+        <canvas id="pdf-preview"></canvas>
+        <div id="signature-wrapper" style="display:none;">
+          <img id="signature-draggable" />
+          <div class="resizer"></div>
+        </div>
+      </div>
     </section>
 
-    <section id="upload-section" class="upload neon-blue">
-      <h2>Upload Dokumen</h2>
-      <input type="file" id="pdf-upload" accept="application/pdf" onchange="previewPDF()" />
-       <div class="button-row">
-        <button onclick="prevPage()">⬅ Halaman Sebelumnya</button>
-        <input type="number" id="goto-page" placeholder="Ke halaman..." min="1" style="width: 100px" />
-        <button onclick="goToPage()">Pergi</button>
-        <button onclick="nextPage()">Halaman Berikutnya ➡</button>
-        <span id="page-info">Halaman 0 dari 0</span>
-      </div>
-      <canvas id="pdf-preview"></canvas>
-      <div id="signature-wrapper" style="position:absolute; display:none;">
-        <img id="signature-draggable" src="" draggable="true" />
-        <div class="resizer"></div>
-      </div>
-      <button onclick="saveSignaturePosition()">Simpan Posisi</button>
-      <button onclick="downloadSignedPDF()">Download PDF Bertanda Tangan</button>
-    </section>
-
-    <section class="draw neon-green">
-      <h2>Buat Tanda Tangan Online</h2>
-      <canvas id="signature-pad" width="400" height="200"></canvas>
+    <section class="neon-blue">
+      <h2>Buat Tanda Tangan</h2>
+      <canvas id="signature-pad" width="400" height="150" style="border:1px solid #ccc;"></canvas>
       <div class="color-picker">
-        <label><input type="radio" name="color" value="black" checked> Hitam</label>
-        <label><input type="radio" name="color" value="blue"> Biru</label>
-        <label><input type="radio" name="color" value="red"> Merah</label>
+        <label><input type="radio" name="penColor" value="black" checked> Hitam</label>
+        <label><input type="radio" name="penColor" value="blue"> Biru</label>
+        <label><input type="radio" name="penColor" value="red"> Merah</label>
       </div>
       <div class="button-row">
-        <button onclick="savePadSignature()">Simpan</button>
-        <button onclick="clearPad()">Hapus</button>
+        <button onclick="clearSignature()">Hapus</button>
+        <button onclick="saveSignature()">Simpan Tanda Tangan</button>
       </div>
     </section>
 
-    <footer>
-      &copy; 2025 Tanda Tangan Digital. All rights reserved.
-    </footer>
+    <section class="neon-blue">
+      <h2>Atur Posisi Tanda Tangan</h2>
+      <p>Geser tanda tangan ke posisi yang diinginkan di halaman PDF.</p>
+      <div class="button-row">
+        <button onclick="lockSignaturePosition()">Simpan Posisi</button>
+        <button onclick="downloadSignedPDF()">Download PDF Bertanda Tangan</button>
+      </div>
+    </section>
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+  <script src="https://unpkg.com/pdf-lib/dist/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
   <script>
-    let signaturePad;
-    let savedSignatureDataURL = null;
+    const pdfjsLib = window['pdfjs-dist/build/pdf'];
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js';
+
     let pdfDoc = null;
     let currentPage = 1;
-    let scale = 1.5;
-    let signaturePos = { x: 50, y: 50, width: 150, height: 50 };
+    let totalPages = 1;
+    let signaturePad;
+    let savedSignatureDataURL = "";
 
-    function updatePageInfo() {
-      const pageInfo = document.getElementById("page-info");
-      pageInfo.textContent = `Halaman ${currentPage} dari ${pdfDoc.numPages}`;
-    }
+    document.getElementById('pdf-upload').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file && file.type === 'application/pdf') {
+        const fileReader = new FileReader();
+        fileReader.onload = function () {
+          const typedArray = new Uint8Array(this.result);
+          pdfjsLib.getDocument(typedArray).promise.then(pdf => {
+            pdfDoc = pdf;
+            totalPages = pdfDoc.numPages;
+            document.getElementById('total-pages').textContent = totalPages;
+            renderPage(currentPage);
+          });
+        };
+        fileReader.readAsArrayBuffer(file);
+      }
+    });
 
-    window.onload = () => {
-      const canvas = document.getElementById("signature-pad");
-      signaturePad = new SignaturePad(canvas, { penColor: "black" });
-
-      document.querySelectorAll('input[name="color"]').forEach(radio => {
-        radio.addEventListener("change", e => {
-          signaturePad.penColor = e.target.value;
-        });
-      });
-
-      const wrapper = document.getElementById("signature-wrapper");
-      const sigImg = document.getElementById("signature-draggable");
-      const resizer = document.querySelector(".resizer");
-
-      sigImg.addEventListener("dragstart", e => e.preventDefault());
-
-      let isDragging = false;
-      let isResizing = false;
-
-      wrapper.addEventListener("mousedown", (e) => {
-        if (e.target === resizer) {
-          isResizing = true;
-        } else {
-          isDragging = true;
-        }
-      });
-
-      document.addEventListener("mouseup", () => {
-        isDragging = false;
-        isResizing = false;
-      });
-
-      document.addEventListener("mousemove", (e) => {
-        if (isDragging) {
-          signaturePos.x = e.pageX - wrapper.offsetWidth / 2;
-          signaturePos.y = e.pageY - wrapper.offsetHeight / 2;
-          wrapper.style.left = signaturePos.x + "px";
-          wrapper.style.top = signaturePos.y + "px";
-        }
-        if (isResizing) {
-          const newWidth = e.pageX - wrapper.offsetLeft;
-          const newHeight = e.pageY - wrapper.offsetTop;
-          wrapper.style.width = newWidth + "px";
-          wrapper.style.height = newHeight + "px";
-          sigImg.style.width = "100%";
-          sigImg.style.height = "100%";
-          signaturePos.width = newWidth;
-          signaturePos.height = newHeight;
-        }
-      });
-    };
-
-    function clearPad() {
-      signaturePad.clear();
-    }
-
-    function savePadSignature() {
-      if (signaturePad.isEmpty()) return alert("Silakan gambar tanda tangan terlebih dahulu.");
-      savedSignatureDataURL = signaturePad.toDataURL("image/png");
-      const sigImg = document.getElementById("signature-draggable");
-      sigImg.src = savedSignatureDataURL;
-      document.getElementById("signature-wrapper").style.display = "block";
-    }
-
-    function previewPDF() {
-      const file = document.getElementById("pdf-upload").files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = function () {
-        const typedarray = new Uint8Array(this.result);
-        pdfjsLib.getDocument(typedarray).promise.then(function (pdf) {
-          pdfDoc = pdf;
-          currentPage = 1;
-          renderPage(currentPage);
-        });
-      };
-      reader.readAsArrayBuffer(file);
-    }
-
-    function renderPage(num) {
-      pdfDoc.getPage(num).then(function (page) {
-        const canvas = document.getElementById("pdf-preview");
-        const context = canvas.getContext("2d");
-        const viewport = page.getViewport({ scale: scale });
+    function renderPage(pageNum) {
+      pdfDoc.getPage(pageNum).then(page => {
+        const canvas = document.getElementById('pdf-preview');
+        const context = canvas.getContext('2d');
+        const viewport = page.getViewport({ scale: 1.5 });
         canvas.height = viewport.height;
         canvas.width = viewport.width;
-        const renderContext = { canvasContext: context, viewport: viewport };
-        page.render(renderContext);
-        updatePageInfo();
-      });
-    }
 
-    function prevPage() {
-      if (currentPage <= 1) return;
-      currentPage--;
-      renderPage(currentPage);
+        const renderContext = {
+          canvasContext: context,
+          viewport: viewport
+        };
+        page.render(renderContext);
+
+        document.getElementById('current-page').textContent = pageNum;
+        document.getElementById('goto-page').value = pageNum;
+      });
     }
 
     function nextPage() {
-      if (currentPage >= pdfDoc.numPages) return;
-      currentPage++;
-      renderPage(currentPage);
-    }
-
-    function goToPage() {
-      const page = parseInt(document.getElementById("goto-page").value);
-      if (page >= 1 && page <= pdfDoc.numPages) {
-        currentPage = page;
+      if (currentPage < totalPages) {
+        currentPage++;
         renderPage(currentPage);
       }
     }
 
-    function loadSignatureImage(event) {
-      const wrapper = document.getElementById("signature-wrapper");
-      const img = document.getElementById("signature-draggable");
-      img.src = URL.createObjectURL(event.target.files[0]);
-      wrapper.style.display = "block";
+    function prevPage() {
+      if (currentPage > 1) {
+        currentPage--;
+        renderPage(currentPage);
+      }
     }
 
-    function saveSignaturePosition() {
-      alert("Posisi dan ukuran tanda tangan berhasil disimpan. Silakan klik download untuk menyimpan PDF.");
+    function goToPage(num) {
+      const n = parseInt(num);
+      if (n >= 1 && n <= totalPages) {
+        currentPage = n;
+        renderPage(currentPage);
+      }
+    }
+
+    const canvas = document.getElementById("signature-pad");
+    signaturePad = new SignaturePad(canvas);
+
+    document.querySelectorAll('input[name="penColor"]').forEach(el => {
+      el.addEventListener('change', e => {
+        signaturePad.penColor = e.target.value;
+      });
+    });
+
+    function clearSignature() {
+      signaturePad.clear();
+    }
+
+    function saveSignature() {
+      if (!signaturePad.isEmpty()) {
+        savedSignatureDataURL = signaturePad.toDataURL();
+        const wrapper = document.getElementById("signature-wrapper");
+        const img = document.getElementById("signature-draggable");
+        wrapper.style.display = "block";
+        img.src = savedSignatureDataURL;
+        wrapper.style.left = "20px";
+        wrapper.style.top = "20px";
+        makeDraggable(wrapper);
+        makeResizable(wrapper, wrapper.querySelector('.resizer'));
+      }
+    }
+
+    function makeDraggable(elmnt) {
+      let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+      elmnt.onmousedown = dragMouseDown;
+
+      function dragMouseDown(e) {
+        e.preventDefault();
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        document.onmouseup = closeDragElement;
+        document.onmousemove = elementDrag;
+      }
+
+      function elementDrag(e) {
+        e.preventDefault();
+        pos1 = pos3 - e.clientX;
+        pos2 = pos4 - e.clientY;
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+        elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+      }
+
+      function closeDragElement() {
+        document.onmouseup = null;
+        document.onmousemove = null;
+      }
+    }
+
+    function makeResizable(elmnt, resizer) {
+      resizer.addEventListener("mousedown", initResize);
+      function initResize(e) {
+        e.preventDefault();
+        window.addEventListener("mousemove", Resize);
+        window.addEventListener("mouseup", stopResize);
+      }
+      function Resize(e) {
+        elmnt.style.width = (e.clientX - elmnt.offsetLeft) + "px";
+        elmnt.style.height = (e.clientY - elmnt.offsetTop) + "px";
+      }
+      function stopResize() {
+        window.removeEventListener("mousemove", Resize);
+        window.removeEventListener("mouseup", stopResize);
+      }
+    }
+
+    function lockSignaturePosition() {
+      const wrapper = document.getElementById("signature-wrapper");
+      if (wrapper) wrapper.style.pointerEvents = "none";
     }
 
     async function downloadSignedPDF() {
@@ -313,14 +330,8 @@
         const canvasRect = document.getElementById("pdf-preview").getBoundingClientRect();
         const wrapperRect = wrapper.getBoundingClientRect();
 
-        let signatureImage;
-        if (img.src.startsWith("data:image")) {
-          signatureImage = await pdfDocLib.embedPng(img.src);
-        } else {
-          const res = await fetch(img.src);
-          const buffer = await res.arrayBuffer();
-          signatureImage = await pdfDocLib.embedPng(buffer);
-        }
+        const pngUrl = savedSignatureDataURL;
+        const signatureImage = await pdfDocLib.embedPng(pngUrl);
 
         const pages = pdfDocLib.getPages();
         const targetPage = pages[currentPage - 1];
